@@ -682,7 +682,7 @@ function resetWeapons() {
   weapons = DEFAULT_WEAPONS.map(function(w){ return w.slice(); });
   saveToStorage();
   loadEditor();
-  document.getElementById("save-msg").textContent = "✓ 기본 " + weapons.length + "목록으로 초기화";
+  document.getElementById("save-msg").textContent = "✓ 기본 목록 " + weapons.length + " 개로 초기화";
   updateCountNote();
 }
 
