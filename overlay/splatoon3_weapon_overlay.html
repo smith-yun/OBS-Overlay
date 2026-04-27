@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Splatoon 3 Weapon Randomizer</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'M PLUS Rounded 1c', 'Noto Sans KR', sans-serif;
+  background: transparent;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 16px;
+}
+.overlay {
+  width: 420px;
+  background: rgba(14, 11, 28, 0.93);
+  border-radius: 22px;
+  border: 2.5px solid #f5e642;
+  padding: 18px 20px 16px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 0 40px rgba(245,230,66,0.12);
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.header-left { display: flex; align-items: center; gap: 8px; }
+.dot {
+  width: 28px; height: 28px;
+  background: #f5e642;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+}
+.title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #f5e642;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.edit-toggle {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(245,230,66,0.4);
+  background: transparent;
+  color: rgba(245,230,66,0.7);
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.04em;
+  font-family: inherit;
+}
+.edit-toggle:hover { border-color: #f5e642; color: #f5e642; }
+.edit-toggle.active { background: #f5e642; color: #120f1c; border-color: #f5e642; }
+
+/* ── ROULETTE ── */
+#roulette-view { display: block; }
+#editor-view   { display: none; }
+
+.weapon-box {
+  background: rgba(245,230,66,0.05);
+  border: 1.5px solid rgba(245,230,66,0.18);
+  border-radius: 14px;
+  padding: 14px 16px;
+  min-height: 84px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  position: relative;
+}
+.weapon-thumb-wrap {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+.weapon-thumb-wrap.hidden { display: none; }
+.weapon-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity 0.2s;
+}
+.thumb-placeholder {
+  font-size: 28px;
+  opacity: 0.25;
+  user-select: none;
+}
+.weapon-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.weapon-cat {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+}
+.weapon-name {
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.weapon-name.spin { animation: spinframe 0.07s steps(1) infinite; }
+@keyframes spinframe {
+  0%   { opacity: 1; transform: translateY(0); }
+  50%  { opacity: 0.5; transform: translateY(-3px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.shimmer {
+  position: absolute; top: 0; left: -100%;
+  width: 55%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
+  pointer-events: none;
+}
+.shimmer.go { animation: shimgo 0.55s ease forwards; }
+@keyframes shimgo { to { left: 160%; } }
+
+.roll-btn {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 11px;
+  border-radius: 12px;
+  border: none;
+  background: #f5e642;
+  color: #120f1c;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: all 0.12s;
+}
+.roll-btn:hover:not(:disabled) { background: #fff97a; transform: translateY(-1px); }
+.roll-btn:active:not(:disabled) { transform: scale(0.97); }
+.roll-btn:disabled { opacity: 0.65; cursor: default; }
+.count-note {
+  font-size: 10px;
+  color: rgba(255,255,255,0.28);
+  text-align: center;
+  margin-top: 8px;
+  letter-spacing: 0.04em;
+}
+
+/* ── EDITOR ── */
+.editor-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.tab-btn {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  background: transparent;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  transition: all 0.12s;
+  letter-spacing: 0.04em;
+}
+.tab-btn.active {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.35);
+  color: #fff;
+}
+
+/* list tab */
+#tab-list { display: block; }
+#tab-img  { display: none; }
+
+.editor-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(245,230,66,0.7);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.editor-textarea {
+  width: 100%;
+  height: 200px;
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 10px 12px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.editor-textarea:focus { border-color: rgba(245,230,66,0.5); }
+.editor-hint {
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  margin-top: 6px;
+  line-height: 1.6;
+}
+
+/* image tab */
+.img-weapon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.img-weapon-list::-webkit-scrollbar { width: 4px; }
+.img-weapon-list::-webkit-scrollbar-track { background: transparent; }
+.img-weapon-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+
+.img-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: border-color 0.12s;
+}
+.img-row:hover { border-color: rgba(245,230,66,0.35); }
+.img-row.has-img { border-color: rgba(245,230,66,0.25); }
+
+.img-thumb-mini {
+  width: 40px; height: 40px;
+  border-radius: 7px;
+  background: rgba(255,255,255,0.07);
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.img-thumb-mini img { width: 100%; height: 100%; object-fit: contain; }
+.img-thumb-mini .no-img { font-size: 18px; opacity: 0.2; }
+
+.img-row-info { flex: 1; min-width: 0; }
+.img-row-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.img-row-cat {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.06em;
+}
+.img-row-action {
+  font-size: 10px;
+  color: rgba(245,230,66,0.6);
+  white-space: nowrap;
+}
+.img-row.has-img .img-row-action { color: #ef9a9a; }
+
+.img-hint {
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+/* hidden file input */
+#file-input { display: none; }
+
+.editor-actions { display: flex; gap: 8px; margin-top: 12px; }
+.btn-save {
+  flex: 1;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 9px;
+  border-radius: 10px;
+  border: none;
+  background: #f5e642;
+  color: #120f1c;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.12s;
+}
+.btn-save:hover { background: #fff97a; }
+.btn-reset {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  background: transparent;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.btn-reset:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+.save-msg {
+  font-size: 10px;
+  color: #a5d6a7;
+  text-align: center;
+  margin-top: 6px;
+  height: 14px;
+}
+.obs-note {
+  font-size: 10px;
+  color: rgba(255,255,255,0.22);
+  text-align: center;
+  margin-top: 10px;
+  letter-spacing: 0.03em;
+}
+</style>
+</head>
+<body>
+<div class="overlay">
+  <div class="header">
+    <div class="header-left">
+      <div class="dot">&#127919;</div>
+      <div class="title">무기 랜덤 선택</div>
+    </div>
+    <button class="edit-toggle" id="edit-toggle" onclick="toggleView()">&#9998; 목록 편집</button>
+  </div>
+
+  <!-- ROULETTE -->
+  <div id="roulette-view">
+    <div class="weapon-box">
+      <div class="shimmer" id="shimmer"></div>
+      <div class="weapon-thumb-wrap hidden" id="thumb-wrap">
+        <img class="weapon-thumb" id="disp-img" src="" alt="">
+        <div class="thumb-placeholder" id="thumb-placeholder">&#127932;</div>
+      </div>
+      <div class="weapon-info">
+        <div class="weapon-cat" id="disp-cat">무기 랜덤 뽑기</div>
+        <div class="weapon-name" id="disp-name">버튼을 눌러주세요</div>
+      </div>
+    </div>
+    <button class="roll-btn" id="roll-btn" onclick="roll()">&#127922; 랜덤 뽑기!</button>
+    <div class="count-note" id="count-note"></div>
+  </div>
+
+  <!-- EDITOR -->
+  <div id="editor-view">
+    <div class="editor-tabs">
+      <button class="tab-btn active" id="tab-list-btn" onclick="switchTab('list')">&#128221; 무기 목록</button>
+      <button class="tab-btn" id="tab-img-btn" onclick="switchTab('img')">&#128247; 썸네일 이미지</button>
+    </div>
+
+    <div id="tab-list">
+      <div class="editor-label">무기 목록 편집</div>
+      <textarea class="editor-textarea" id="weapon-textarea"></textarea>
+      <div class="editor-hint">
+        한 줄에 무기 하나씩 &nbsp;|&nbsp; 형식: <span style="color:#f5e642">무기이름, 카테고리</span><br>
+        예) 스플랫 슈터, 슈터 &nbsp;&nbsp;또는&nbsp;&nbsp; 스플랫 슈터 (카테고리 생략 가능)
+      </div>
+      <div class="editor-actions">
+        <button class="btn-save" onclick="saveWeapons()">&#128190; 저장하고 닫기</button>
+        <button class="btn-reset" onclick="resetWeapons()">기본 초기화</button>
+      </div>
+      <div class="save-msg" id="save-msg"></div>
+    </div>
+
+    <div id="tab-img">
+      <div class="editor-label">무기별 썸네일 설정</div>
+      <div class="img-weapon-list" id="img-weapon-list"></div>
+      <div class="img-hint">
+        &#128073; 무기을 클릭해서 이미지 파일을 선택하세요<br>
+        &#128247; PNG / JPG / WebP · 이미지는 브라우저에 로컬 저장됩니다<br>
+        &#9888;&#65039; OBS 캐시 초기화 시 이미지도 삭제됩니다
+      </div>
+      <div class="editor-actions">
+        <button class="btn-save" onclick="closeEditor()">&#10003; 저장</button>
+        <button class="btn-reset" onclick="clearAllImages()">이미지 전체 삭제</button>
+      </div>
+      <div class="save-msg" id="img-save-msg"></div>
+    </div>
+  </div>
+
+  <input type="file" id="file-input" accept="image/*">
+  <div class="obs-note">Powered by Breadchannel</div>
+</div>
+
+<script>
+var DEFAULT_WEAPONS = [
+  ["새싹 슈터","슈터"],["단풍 슈터","슈터"],["스플랫 슈터","슈터"],["스플랫 슈터 컬래버","슈터"],
+  ["글램 스플랫 슈터","슈터"],["프라임 슈터","슈터"],["프라임 슈터 컬래버","슈터"],["프라임 슈터 FRZN","슈터"],
+  ["프로모델러 MG","슈터"],["프로모델러 RG","슈터"],["컬러 프로모델러","슈터"],["N-ZAP85","슈터"],["N-ZAP89","슈터"],
+  ["볼드 마커","슈터"],["네오 볼드 마커","슈터"],["샤프 마커 GECK","슈터"],[".52 갤런","슈터"],[".52 갤런 데코","슈터"],
+  [".96 갤런","슈터"],[".96 갤런 데코","슈터"],["클로 .96 갤런","슈터"],["L3 릴 건","슈터"],["L3 릴 건 D","슈터"],
+  ["글리터 L3 릴 건","슈터"],["H3 릴 건","슈터"],["H3 릴 건 D","슈터"],["H3 릴 건 SNAK","슈터"],["제트 스위퍼","슈터"],
+  ["커스텀 제트 스위퍼","슈터"],["제트 스위퍼 COBR","슈터"],["보틀 가이저","슈터"],["포일 보틀 가이저","슈터"],
+  ["스페이스 슈터","슈터"],["스페이스 슈터 컬래버","슈터"],["스플랫 롤러","롤러"],["스플랫 롤러 컬래버","롤러"],
+  ["카본 롤러","롤러"],["카본 롤러 데코","롤러"],["카본 롤러 ANGL","롤러"],["다이너모 롤러","롤러"],
+  ["골드 다이너모 롤러","롤러"],["스타 다이너모 롤러","롤러"],["베리어블 롤러","롤러"],["포일 베리어블 롤러","롤러"],
+  ["와이드 롤러","롤러"],["와이드 롤러 컬래버","롤러"],["플래닛 와이드 롤러","롤러"]  
+];
+
+var STORAGE_KEY  = "spl3_weapons_v1";
+var IMG_KEY_PFX  = "spl3_img_";
+var weapons      = [];
+var rolling      = false;
+var editorOpen   = false;
+var currentTab   = "list";
+var pendingImgIdx = -1;
+
+/* ── storage ── */
+function loadWeapons() {
+  try {
+    var saved = localStorage.getItem(STORAGE_KEY);
+    weapons = saved ? JSON.parse(saved) : DEFAULT_WEAPONS.map(function(w){ return w.slice(); });
+  } catch(e) {
+    weapons = DEFAULT_WEAPONS.map(function(w){ return w.slice(); });
+  }
+  updateCountNote();
+}
+
+function saveToStorage() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(weapons)); } catch(e) {}
+}
+
+function imgKey(name) {
+  return IMG_KEY_PFX + name.replace(/\s+/g, "_");
+}
+
+function getImg(name) {
+  try { return localStorage.getItem(imgKey(name)) || ""; } catch(e) { return ""; }
+}
+
+function setImg(name, dataUrl) {
+  try { localStorage.setItem(imgKey(name), dataUrl); } catch(e) {
+    alert("이미지 저장 실패: 용량 초과일 수 있습니다. 더 작은 이미지를 사용해주세요.");
+  }
+}
+
+function delImg(name) {
+  try { localStorage.removeItem(imgKey(name)); } catch(e) {}
+}
+
+/* ── count note ── */
+function updateCountNote() {
+  document.getElementById("count-note").textContent = weapons.length > 0
+    ? "총 " + weapons.length + "개 무기"
+    : "무기 목록이 비어있어요";
+}
+
+/* ── view toggle ── */
+function toggleView() {
+  editorOpen = !editorOpen;
+  var toggle = document.getElementById("edit-toggle");
+  if (editorOpen) {
+    document.getElementById("roulette-view").style.display = "none";
+    document.getElementById("editor-view").style.display = "block";
+    toggle.classList.add("active");
+    toggle.textContent = "✕ 닫기";
+    switchTab(currentTab);
+  } else {
+    closeEditor();
+  }
+}
+
+function closeEditor() {
+  editorOpen = false;
+  document.getElementById("roulette-view").style.display = "block";
+  document.getElementById("editor-view").style.display = "none";
+  var toggle = document.getElementById("edit-toggle");
+  toggle.classList.remove("active");
+  toggle.textContent = "✎ 목록 편집";
+}
+
+/* ── tabs ── */
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById("tab-list").style.display = tab === "list" ? "block" : "none";
+  document.getElementById("tab-img").style.display  = tab === "img"  ? "block" : "none";
+  document.getElementById("tab-list-btn").classList.toggle("active", tab === "list");
+  document.getElementById("tab-img-btn").classList.toggle("active",  tab === "img");
+  if (tab === "list") loadEditor();
+  if (tab === "img")  renderImgList();
+}
+
+/* ── list editor ── */
+function loadEditor() {
+  var lines = weapons.map(function(w){ return w[1] ? w[0] + ", " + w[1] : w[0]; });
+  document.getElementById("weapon-textarea").value = lines.join("\n");
+  document.getElementById("save-msg").textContent = "";
+}
+
+function saveWeapons() {
+  var raw   = document.getElementById("weapon-textarea").value;
+  var lines = raw.split("\n").map(function(l){ return l.trim(); }).filter(function(l){ return l.length > 0; });
+  if (lines.length === 0) {
+    document.getElementById("save-msg").textContent = "⚠ 무기을 하나 이상 입력해주세요";
+    return;
+  }
+  weapons = lines.map(function(line) {
+    var comma = line.lastIndexOf(",");
+    if (comma > -1) return [line.slice(0, comma).trim(), line.slice(comma + 1).trim()];
+    return [line, ""];
+  });
+  saveToStorage();
+  updateCountNote();
+  var msg = document.getElementById("save-msg");
+  msg.textContent = "✓ " + weapons.length + "무기 저장 완료!";
+  setTimeout(function(){ msg.textContent = ""; closeEditor(); }, 900);
+}
+
+function resetWeapons() {
+  if (!confirm("기본 목록으로 초기화할까요?")) return;
+  weapons = DEFAULT_WEAPONS.map(function(w){ return w.slice(); });
+  saveToStorage();
+  loadEditor();
+  document.getElementById("save-msg").textContent = "✓ 기본 " + weapons.length + "목록으로 초기화";
+  updateCountNote();
+}
+
+/* ── image editor ── */
+function renderImgList() {
+  var list = document.getElementById("img-weapon-list");
+  list.innerHTML = "";
+  weapons.forEach(function(w, i) {
+    var name = w[0];
+    var cat  = w[1] || "";
+    var src  = getImg(name);
+
+    var row = document.createElement("div");
+    row.className = "img-row" + (src ? " has-img" : "");
+    row.onclick = function() { openFilePicker(i); };
+
+    var mini = document.createElement("div");
+    mini.className = "img-thumb-mini";
+    if (src) {
+      var img = document.createElement("img");
+      img.src = src;
+      mini.appendChild(img);
+    } else {
+      var ph = document.createElement("div");
+      ph.className = "no-img";
+      ph.textContent = "🎯";
+      mini.appendChild(ph);
+    }
+
+    var info = document.createElement("div");
+    info.className = "img-row-info";
+    var nameEl = document.createElement("div");
+    nameEl.className = "img-row-name";
+    nameEl.textContent = name;
+    var catEl = document.createElement("div");
+    catEl.className = "img-row-cat";
+    catEl.textContent = cat;
+    info.appendChild(nameEl);
+    info.appendChild(catEl);
+
+    var action = document.createElement("div");
+    action.className = "img-row-action";
+    action.textContent = src ? "🗑 삭제/변경" : "+ 추가";
+
+    row.appendChild(mini);
+    row.appendChild(info);
+    row.appendChild(action);
+    list.appendChild(row);
+  });
+}
+
+function openFilePicker(idx) {
+  pendingImgIdx = idx;
+  var fi = document.getElementById("file-input");
+  fi.value = "";
+  fi.click();
+}
+
+document.getElementById("file-input").addEventListener("change", function(e) {
+  var file = e.target.files[0];
+  if (!file || pendingImgIdx < 0) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var dataUrl = ev.target.result;
+    var name = weapons[pendingImgIdx][0];
+    setImg(name, dataUrl);
+    var msg = document.getElementById("img-save-msg");
+    msg.textContent = "✓ " + name + " 이미지 저장!";
+    setTimeout(function(){ msg.textContent = ""; }, 1500);
+    renderImgList();
+    pendingImgIdx = -1;
+  };
+  reader.readAsDataURL(file);
+});
+
+function clearAllImages() {
+  if (!confirm("모든 무기 이미지를 삭제할까요?")) return;
+  weapons.forEach(function(w){ delImg(w[0]); });
+  renderImgList();
+  document.getElementById("img-save-msg").textContent = "✓ 전체 이미지 삭제 완료";
+  setTimeout(function(){ document.getElementById("img-save-msg").textContent = ""; }, 1500);
+}
+
+/* ── roulette ── */
+function showWeapon(w) {
+  var name = w[0];
+  var cat  = w[1] || "—";
+  var src  = getImg(name);
+
+  document.getElementById("disp-name").textContent = name;
+  document.getElementById("disp-cat").textContent  = cat;
+
+  var wrap = document.getElementById("thumb-wrap");
+  var img  = document.getElementById("disp-img");
+  var ph   = document.getElementById("thumb-placeholder");
+
+  if (src) {
+    wrap.classList.remove("hidden");
+    img.src = src;
+    img.style.display = "block";
+    ph.style.display  = "none";
+  } else {
+    wrap.classList.add("hidden");
+    img.src = "";
+  }
+}
+
+function roll() {
+  if (rolling || weapons.length === 0) return;
+  rolling = true;
+  var btn = document.getElementById("roll-btn");
+  btn.disabled = true;
+  btn.textContent = "⏳ 뽑는 중...";
+
+  var nameEl = document.getElementById("disp-name");
+  nameEl.classList.add("spin");
+
+  var tick = 0, total = 20;
+  var iv = setInterval(function() {
+    var w = weapons[Math.floor(Math.random() * weapons.length)];
+    document.getElementById("disp-name").textContent = w[0];
+    document.getElementById("disp-cat").textContent  = w[1] || "—";
+    /* hide thumb during spin */
+    document.getElementById("thumb-wrap").classList.add("hidden");
+    tick++;
+    if (tick >= total) {
+      clearInterval(iv);
+      var final = weapons[Math.floor(Math.random() * weapons.length)];
+      nameEl.classList.remove("spin");
+      showWeapon(final);
+      var sh = document.getElementById("shimmer");
+      sh.classList.remove("go");
+      void sh.offsetWidth;
+      sh.classList.add("go");
+      rolling = false;
+      btn.disabled = false;
+      btn.textContent = "🎲 다시 뽑기!";
+    }
+  }, 75);
+}
+
+/* ── init ── */
+loadWeapons();
+
+document.addEventListener("keydown", function(e) {
+  if (e.code === "Space" && !editorOpen) {
+    e.preventDefault();
+    roll();
+  }
+});
+</script>
+</body>
+</html>
